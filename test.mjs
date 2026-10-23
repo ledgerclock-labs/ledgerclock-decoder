@@ -1,0 +1,11 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {normalize,decodeStellarValue,timeBounds,uint64} from './index.mjs';import {encodeValue} from '../ledgerclock-fixtures/index.mjs';
+for(const arm of [0,1,2,3,4])test(`decode arm ${arm}`,()=>{assert.equal(decodeStellarValue(encodeValue({arm})).arm,arm)});
+test('integer precision at uint64 limit',()=>assert.equal(uint64('18446744073709551615'),18446744073709551615n));
+test('refuses unsafe numeric inputs',()=>assert.throws(()=>uint64(1800000000)));
+test('refuses mismatched units',()=>assert.throws(()=>normalize({arm:3,closeTime:'1',closeTimeMs:'2000'})));
+test('maxTime inclusive through same whole second',()=>assert.equal(timeBounds(normalize({arm:3,closeTime:'1800000000',closeTimeMs:'1800000000999'}),'0','1800000000'),true));
+test('zero maxTime is unbounded',()=>assert.equal(timeBounds({closeTime:'99'},'1','0'),true));
+test('inverted bounds rejected',()=>assert.throws(()=>timeBounds({closeTime:'1'},'4','3')));
+test('truncated XDR rejected',()=>assert.throws(()=>decodeStellarValue(encodeValue().slice(0,-8))));
+test('trailing bytes rejected',()=>assert.throws(()=>decodeStellarValue(Buffer.concat([Buffer.from(encodeValue(),'base64'),Buffer.alloc(4)]).toString('base64'))));
+test('unknown arm rejected',()=>{const b=Buffer.from(encodeValue(),'base64');b.writeUInt32BE(99,44);assert.throws(()=>decodeStellarValue(b.toString('base64')))});
